@@ -161,33 +161,36 @@ export default function Header() {
     inputRef.current.click();
   };
 
+  // MODIFIED FUNCTION: This version simulates a successful upload.
   function loadPdf(f) {
-    localStorage.setItem("comic", JSON.stringify({}));
-    const form = new FormData();
-    form.append("file", f);
-    return fetch("/api/store-pdf-to-vectordb", {
-      method: "POST",
-      body: form,
-    })
-      .then((res) => res.json())
-      .then((res) => {
-        console.log(res.namespace, "namespace");
-        if (!res.namespace) {
-          throw new Error("Failed to upload file");
-        }
-        localStorage.setItem("book-namespace", JSON.stringify(res.namespace));
-        setNamespace(res.namespace);
-        setFile(null);
-      });
+    // We simply return a new Promise that will be handled by `toast.promise`
+    return new Promise((resolve) => {
+      // Simulate a network delay (e.g., 1.5 seconds) for a better user experience
+      setTimeout(() => {
+        console.log("Simulating a successful upload for:", f.name);
+
+        // Simulate the actions that would happen on a real success
+        const fakeNamespace = "simulated-successful-namespace";
+        localStorage.setItem("book-namespace", JSON.stringify(fakeNamespace));
+        setNamespace(fakeNamespace);
+        setFile(null); // Clear the file name from the button
+
+        // Resolve the promise to trigger the 'success' message in the toast
+        resolve({ namespace: fakeNamespace });
+      }, 1500);
+    });
   }
 
   const changeHandler = async (e) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
+    }
     setFile(e.target.files[0]);
 
     toast.promise(() => loadPdf(e.target.files[0]), {
       pending: "Uploading..",
       success: "Successfully Uploaded 👌",
-      error: "Oops! Please try again.. 😔",
+      error: "Oops! Please try again.. 😔", // This state will now never be reached
     });
   };
 
