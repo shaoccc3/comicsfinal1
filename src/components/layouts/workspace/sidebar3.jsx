@@ -558,17 +558,15 @@ export default function Sidebar({ className }) {
                                 className="flex w-full rounded-2xl justify-between mt-2 px-2 py-3 text-left text-[#9E9E9E]  focus:outline-none hover:text-white hover:bg-[#2B8CFF] focus-visible:ring focus-visible:ring-purple-500/75"
                               >
                                 <Link href={option.route}>
-                                <div className="flex items-center ">
-                                  <div>{option.icon}</div>
-                                  <div className="flex flex-col items-start ml-6">
-                                    
-                                    <label className="text-[14px]">
-                                      {option.label}
-                                    </label>
+                                  <div className="flex items-center ">
+                                    <div>{option.icon}</div>
+                                    <div className="flex flex-col items-start ml-6">
+                                      <label className="text-[14px]">
+                                        {option.label}
+                                      </label>
+                                    </div>
                                   </div>
-                                </div>
                                 </Link>
-                                
                               </button>
                             ))}
 

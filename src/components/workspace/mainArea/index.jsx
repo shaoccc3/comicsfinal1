@@ -1,36 +1,36 @@
 "use client";
-import React from "react";
-import { IoChevronDown } from "react-icons/io5";
-import { FaUpRightAndDownLeftFromCenter } from "react-icons/fa6";
-import { FaDownLeftAndUpRightToCenter } from "react-icons/fa6";
-import Icon from "../../../assets/icon/icon.png";
-import Icon1 from "../../../assets/icon/icon1.png";
-import Icon2 from "../../../assets/icon/icon2.png";
-import Icon3 from "../../../assets/icon/icon3.png";
-import Icon4 from "../../../assets/icon/icon4.png";
-import Icon5 from "../../../assets/icon/icon5.png";
-import Icon6 from "../../../assets/icon/icon6.png";
-import Icon7 from "../../../assets/icon/icon7.png";
-import Icon8 from "../../../assets/icon/icon8.png";
-
-import Image from "next/legacy/image";
-import MapMapFlow from "./flow";
-import { ReactFlowProvider } from "reactflow";
+import React, { useMemo } from "react";
 import { useWorkspaceContext } from "../../../context/workspaceProvider";
+import "tailwindcss/tailwind.css"; // 確保已引入 TailwindCSS
+import CollaborationTimeline from "./flow/CollaborationTimeline";
+// --- Icon Imports ---
+import { IoChevronDown } from "react-icons/io5";
+import {
+  FaUpRightAndDownLeftFromCenter,
+  FaDownLeftAndUpRightToCenter,
+} from "react-icons/fa6";
+import {
+  ClockIcon,
+  LightBulbIcon,
+  ArrowTrendingUpIcon,
+  ChatBubbleLeftEllipsisIcon,
+  DocumentTextIcon,
+  HandThumbUpIcon,
+  HandThumbDownIcon,
+  ChatBubbleLeftIcon,
+} from "@heroicons/react/24/solid";
 
-function MainArea() {
+// --- MainArea Component (Fully Integrated) ---
+function MainArea({ chatRoom }) {
   const {
-    whiteBoard,
-    setWhiteBoard,
-    notesBoard,
-    setNotesBoard,
-    instantEvaluation,
-    setInstantEvaluation,
     evaluationMatrix,
     setEvaluationMatrix,
+    instantEvaluation,
+    setInstantEvaluation,
+    notesBoard,
+    setNotesBoard,
     chats,
     setChats,
-    sidebar,
   } = useWorkspaceContext();
 
   const maximizeView = () => {
@@ -46,39 +46,49 @@ function MainArea() {
     setNotesBoard(true);
     setChats(true);
   };
+
+  const transformedData = useMemo(() => {
+    if (!chatRoom) {
+      return { contributions: [], drafts: [] };
+    }
+    const contributions = chatRoom.map((chat, index) => ({
+      id: index,
+      author: chat.role === "user" ? "使用者" : "Assistant",
+      content: chat.message,
+      created_at: new Date().toISOString(),
+      reactions: [],
+      type: "idea",
+      priority: "normal",
+    }));
+    return { contributions, drafts: [] };
+  }, [chatRoom]);
+
   return (
-    <div className="h-full flex flex-col justify-between bg-white rounded-[20px] overflow-hidden p-3 pb-0">
-      <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col bg-white rounded-[20px] overflow-hidden p-3">
+      {/* 頂部導覽列 */}
+      <div className="flex justify-between items-center border-b pb-3 mb-3">
         <div className="flex justify-between gap-4 items-center">
           <p className="text-lightGray xl:text-[14px] lg:text-[12px] text-[10px]">
-            Subject:
-            <span className="xl:text-[14px] lg:text-[12px] text-[10px] text-black font-[600]">
-              Technology
-            </span>
+            Subject: <span className="text-black font-[600]">Technology</span>
           </p>
           <p className="text-lightGray xl:text-[14px] lg:text-[12px] text-[10px] text-nowrap">
-            {" "}
-            Category:{" "}
-            <span className="xl:text-[14px] lg:text-[12px] text-[10px] text-black font-[600]">
-              Blockchain{" "}
-            </span>
+            Category: <span className="text-black font-[600]">Blockchain</span>
           </p>
           <p className="text-lightGray xl:text-[14px] lg:text-[12px] text-[10px] text-nowrap">
-            {" "}
             Module :{" "}
-            <span className="xl:text-[14px] lg:text-[11px] text-[10px] text-black font-[600]">
+            <span className="text-black font-[600]">
               Web 3 Tech_Intelligence
             </span>
           </p>
         </div>
         <div className="flex justify-between items-center gap-4">
-          <div className="flex border border-[#D8D8D8] bg-[#F4F8FC] rounded-full  justify-center  py-1 items-center px-2">
+          <div className="flex border border-[#D8D8D8] bg-[#F4F8FC] rounded-full justify-center py-1 items-center px-2">
             <select className="border-none bg-[#F4F8FC] py-0 px-3 rounded-full xl:text-[14px] lg:text-[11px] text-[10px]">
               <option>Day 1</option>
               <option>Day 2</option>
               <option>Day 3</option>
             </select>
-            <IoChevronDown className="xl:text-[14px] lg:text-[11px] text-[10px]" />{" "}
+            <IoChevronDown className="xl:text-[14px] lg:text-[11px] text-[10px]" />
           </div>
           <div className="border-l border-lightGray h-[30px]"></div>
           {evaluationMatrix && instantEvaluation && notesBoard && chats ? (
@@ -98,104 +108,10 @@ function MainArea() {
           )}
         </div>
       </div>
-      <div className="bg-[#f4f8fc] h-full w-full mt-2 ">
-        {/* <Flow /> */}
-        {/* <PageFlowDiagran /> */}
-        <ReactFlowProvider>
-          <MapMapFlow />
-        </ReactFlowProvider>
-      </div>
-      <div className="bg-[#2B8CFF] p-4 -mx-3">
-        <div className="flex justify-between items-center ">
-          <div className="flex justify-center items-center gap-10">
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon1}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon2}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon3}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon4}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon5}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon6}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
 
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon7}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-4 items-center">
-            <div className="border-l border-white h-[30px]"></div>
-            <div className="relative h-[10px] mb-2">
-              <Image
-                src={Icon8}
-                objectFit="cover"
-                width={20}
-                height={20}
-                alt="icon"
-              />
-            </div>
-          </div>
-        </div>
+      {/* 主要內容區域：條件渲染 */}
+      <div className="flex-1 w-full h-full overflow-y-auto">
+        <CollaborationTimeline projectData={transformedData} />
       </div>
     </div>
   );

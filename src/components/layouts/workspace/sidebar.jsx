@@ -75,7 +75,7 @@ const templates = [
       },
       {
         label: "Video series",
-        route: "/workspace",
+        route: "/workspace/video-series",
         icon: <MdVideoLibrary className="eye_icons" />,
       },
     ],
@@ -469,7 +469,7 @@ const templates2 = [
         label: "Study Measurement Lego",
         route: "/workspace",
         icon: <FaEye className="eye_icons" />,
-      }
+      },
     ],
   },
   {
@@ -576,7 +576,7 @@ const templates2 = [
         label: "Problem-Solving Techniques Lego",
         route: "/workspace",
         icon: <FaEye className="eye_icons" />,
-      }
+      },
     ],
   },
   {
@@ -716,12 +716,14 @@ const templates2 = [
         icon: <FaEye className="eye_icons" />,
       },
       {
-        label: "Algorithmic Structural Analysis for  Contents with Object-Oriented Abstraction Learning Method",
+        label:
+          "Algorithmic Structural Analysis for  Contents with Object-Oriented Abstraction Learning Method",
         route: "/workspace",
         icon: <FaEye className="eye_icons" />,
       },
       {
-        label: "Solution Architecture Design Training Critical Thinkingin Exam Answer",
+        label:
+          "Solution Architecture Design Training Critical Thinkingin Exam Answer",
         route: "/workspace",
         icon: <FaEye className="eye_icons" />,
       },
@@ -951,10 +953,9 @@ const templates2 = [
         label: "Peer Reviews",
         route: "/workspace",
         icon: <FaEye className="eye_icons" />,
-      }
+      },
     ],
   },
-  
 ];
 
 const studyToolkit = [
@@ -1064,8 +1065,8 @@ const recentSearch = ["UI Design", "word", "UI Develop", "mobile", "UI Design"];
 export default function Sidebar({ className }) {
   const pathname = usePathname();
   const [template, setTemplate] = useState(true);
-  const [module, setModule] = useState('')
-  // learning-assets, learning-modules 
+  const [module, setModule] = useState("");
+  // learning-assets, learning-modules
   // const [sidebar, setSidebar] = useState(true);
   const { sidebar, setSidebar } = useWorkspaceContext();
   var settings = {
@@ -1078,7 +1079,7 @@ export default function Sidebar({ className }) {
     initialSlide: 0,
   };
 
-  const mytemplates = module == "learning-assets" ? templates :  templates2
+  const mytemplates = module == "learning-assets" ? templates : templates2;
   return (
     <aside
       className={cn(
@@ -1099,10 +1100,12 @@ export default function Sidebar({ className }) {
                 Profile
               </button>
               <button
-                 onClick={() => {
+                onClick={() => {
                   setModule("learning-assets");
                 }}
-                className={`flex flex-col items-center  hover:text-white ${module=="learning-assets"?"text-white":"text-[#aad1ff]"}`}
+                className={`flex flex-col items-center  hover:text-white ${
+                  module == "learning-assets" ? "text-white" : "text-[#aad1ff]"
+                }`}
               >
                 <PiBrainFill className="w-8 h-8 mb-2" />
                 Learning <br /> Assets
@@ -1111,7 +1114,9 @@ export default function Sidebar({ className }) {
                 onClick={() => {
                   setModule("learning-modules");
                 }}
-                className={`flex flex-col items-center  hover:text-white ${module=='learning-modules'?'text-white':'text-[#aad1ff]'}`}
+                className={`flex flex-col items-center  hover:text-white ${
+                  module == "learning-modules" ? "text-white" : "text-[#aad1ff]"
+                }`}
               >
                 <PiBrainFill className="w-8 h-8 mb-2" />
                 Learning <br /> Modules
@@ -1237,17 +1242,15 @@ export default function Sidebar({ className }) {
                                 className="flex w-full rounded-2xl justify-between mt-2 px-2 py-3 text-left text-[#9E9E9E]  focus:outline-none hover:text-white hover:bg-[#2B8CFF] focus-visible:ring focus-visible:ring-purple-500/75"
                               >
                                 <Link href={option.route}>
-                                <div className="flex items-center ">
-                                  <div>{option.icon}</div>
-                                  <div className="flex flex-col items-start ml-6">
-                                    
-                                    <label className="text-[14px]">
-                                      {option.label}
-                                    </label>
+                                  <div className="flex items-center ">
+                                    <div>{option.icon}</div>
+                                    <div className="flex flex-col items-start ml-6">
+                                      <label className="text-[14px]">
+                                        {option.label}
+                                      </label>
+                                    </div>
                                   </div>
-                                </div>
                                 </Link>
-                                
                               </button>
                             ))}
 

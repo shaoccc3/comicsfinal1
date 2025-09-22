@@ -1,61 +1,98 @@
 "use client";
-
-import React, { useState } from "react";
-import ChartHeader from "./chartHeader";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/legacy/image";
-import learning2 from "../../assets/icon/profile.png";
-import learning3 from "../../assets/icon/profile2.png";
 import { useWorkspaceContext } from "../../context/workspaceProvider";
-import { FaMicrophone } from "react-icons/fa6";
+import { FaPaperclip, FaMicrophone, FaUserPlus } from "react-icons/fa6";
 import { BiLogoTelegram } from "react-icons/bi";
-import { BsSoundwave } from "react-icons/bs";
+import { FiMessageSquare } from "react-icons/fi";
 
-function SchoolWork() {
+// A small helper component for the header to include the add agent button
+const ChartHeader = ({ title, chat, closeHandler, children }) => (
+  <div className="border-b border-[#E1E1E1] pb-4 flex justify-between items-center">
+    <div>
+      <h1 className="text-xl font-bold">{title}</h1>
+      <p className="text-sm text-gray-500">{chat}</p>
+    </div>
+    <div className="flex items-center gap-2">
+      {children}
+      <button
+        onClick={closeHandler}
+        className="text-gray-400 hover:text-gray-600 text-2xl font-light"
+      >
+        &times;
+      </button>
+    </div>
+  </div>
+);
+
+function SchoolWork({
+  chatRoom,
+  handleSendMessage,
+  agents,
+  activeAgents,
+  onAddAgent,
+}) {
   const { setChats } = useWorkspaceContext();
-  // Renamed for clarity: messageData holds the text for the new message
   const [messageData, setMessageData] = useState("");
-  const [chatRoom, setChatRoom] = useState([
-    {
-      user: "person",
-      message:
-        "Hey! Let me know if you have any questions about the assignment.",
-      image: learning2,
-    },
-    {
-      user: "user",
-      message: "Okay, sounds good! I'll take a look now.",
-      image: learning3,
-    },
-    // Removed the soundwave example to start fresh
-  ]);
+  const [showAgentList, setShowAgentList] = useState(false);
+  const chatContainerRef = useRef(null);
+  const textareaRef = useRef(null); // --- [NEW] Ref for the textarea
 
-  // --- NEW: Function to handle sending a message ---
-  const handleSendMessage = () => {
-    // 1. Prevent sending empty messages
-    if (!messageData.trim()) return;
+  // --- [NEW] State to manage mention suggestions ---
+  const [suggestions, setSuggestions] = useState([]);
+  const [mentionQuery, setMentionQuery] = useState("");
 
-    // 2. Create the new message object for the user
-    const newUserMessage = {
-      user: "user",
-      message: messageData,
-      image: learning3,
-    };
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [chatRoom]);
 
-    // 3. Add the user's message to the chat room
-    setChatRoom((prevChatRoom) => [...prevChatRoom, newUserMessage]);
+  const onSendMessage = () => {
+    if (messageData.trim()) {
+      handleSendMessage(messageData);
+      setMessageData("");
+    }
+  };
 
-    // 4. Clear the input field after sending
-    setMessageData("");
+  // --- [NEW] Handler for input changes to detect '@' ---
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setMessageData(value);
 
-    // 5. Simulate a response after a short delay (e.g., 1.5 seconds)
-    setTimeout(() => {
-      const botResponse = {
-        user: "person",
-        message: `Got it! ${messageData} Thanks for the update. 👍`,
-        image: learning2,
-      };
-      setChatRoom((prevChatRoom) => [...prevChatRoom, botResponse]);
-    }, 1500); // 1500 milliseconds = 1.5 seconds
+    // Use regex to find if the user is typing a mention at the end of the text
+    const mentionMatch = value.match(/@(\w*)$/);
+
+    if (mentionMatch) {
+      const query = mentionMatch[1].toLowerCase();
+      setMentionQuery(query);
+      // Filter agents based on the query (matching agent ID or name)
+      const filteredSuggestions = Object.entries(agents).filter(
+        ([id, agent]) =>
+          id !== "user" &&
+          (id.toLowerCase().includes(query) ||
+            agent.name.toLowerCase().includes(query))
+      );
+      setSuggestions(filteredSuggestions);
+    } else {
+      // If no mention is being typed, clear suggestions
+      setSuggestions([]);
+      setMentionQuery("");
+    }
+  };
+
+  // --- [NEW] Handler for clicking a suggestion ---
+  const handleSuggestionClick = (agentId) => {
+    // Find the beginning of the current mention
+    const lastAtPosition = messageData.lastIndexOf("@");
+    // Replace the partial mention with the full agent ID and a space
+    const newMessage =
+      messageData.substring(0, lastAtPosition) + `@${agentId} `;
+
+    setMessageData(newMessage);
+    setSuggestions([]); // Hide the suggestions menu
+    textareaRef.current?.focus(); // Refocus on the textarea
   };
 
   return (
@@ -64,75 +101,192 @@ function SchoolWork() {
         title={"School Work"}
         chat={"Interactive"}
         closeHandler={() => setChats(false)}
-      />
-
-      <div className="py-4 flex flex-col justify-start h-full gap-10 items-start overflow-y-auto ">
-        {chatRoom.map((item, index) => (
-          <div
-            key={index}
-            className={`flex gap-3 w-full ${
-              item.user === "user" ? "flex-row-reverse " : ""
-            } `}
+      >
+        <div className="relative">
+          <button
+            onClick={() => setShowAgentList(!showAgentList)}
+            className="p-2 rounded-full hover:bg-gray-100"
+            title="Add Agent"
           >
-            <div className="border border-lightGray relative h-[35px] w-[40px] rounded-full flex-shrink-0">
-              <Image
-                src={item.image}
-                alt="profile"
-                objectFit="cover"
-                className="rounded-full"
-                layout="fill"
-              />
-            </div>
-            <div
-              className={`rounded-lg p-2 relative ${
-                item.user === "user"
-                  ? "bg-[#2B8CFF] text-white"
-                  : "bg-[#F4F8FC]"
-              }`}
-            >
-              <span className="text-[11px]">{item.message}</span>
-              <div
-                className={`absolute bottom-[-25px] ${
-                  item.user === "user" ? "left-2" : "right-2"
-                } border border-lightGray bg-white py-[1px] px-2 rounded-full`}
-              >
-                🤩 👍
+            <FaUserPlus className="text-gray-600" />
+          </button>
+          {showAgentList && (
+            <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-xl z-10">
+              <div className="p-3 font-bold border-b text-sm">
+                Available Agents
               </div>
+              <ul>
+                {Object.entries(agents).map(([id, agent]) => {
+                  if (id === "user") return null;
+                  const isAdded = activeAgents.includes(id);
+                  return (
+                    <li
+                      key={id}
+                      className="flex items-center justify-between p-3 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={agent.avatar}
+                          alt={agent.name}
+                          width={32}
+                          height={32}
+                          className="rounded-full"
+                        />
+                        <span className="text-sm">{agent.name}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          onAddAgent(id);
+                          setShowAgentList(false);
+                        }}
+                        disabled={isAdded}
+                        className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+                          isAdded
+                            ? "bg-gray-200 text-gray-500 cursor-default"
+                            : "bg-blue-500 text-white hover:bg-blue-600"
+                        }`}
+                      >
+                        {isAdded ? "Joined" : "Join"}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
+          )}
+        </div>
+      </ChartHeader>
+
+      <div
+        ref={chatContainerRef}
+        className="py-4 flex-1 flex flex-col gap-6 items-start overflow-y-auto"
+      >
+        {/* Chat message rendering remains the same */}
+        {chatRoom.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full w-full text-gray-400">
+            <FiMessageSquare size={48} />
+            <p className="mt-4 text-lg">Start your conversation</p>
           </div>
-        ))}
+        ) : (
+          chatRoom.map((chat, index) => {
+            if (chat.role === "system") {
+              return (
+                <div key={index} className="w-full text-center my-2">
+                  <p className="text-xs text-gray-500 bg-gray-100 rounded-full px-3 py-1 inline-block">
+                    {chat.message}
+                  </p>
+                </div>
+              );
+            }
+            return (
+              <div
+                key={index}
+                className={`flex gap-3 w-full items-start ${
+                  chat.role === "user" ? "flex-row-reverse" : ""
+                }`}
+              >
+                <div className="relative h-[35px] w-[35px] rounded-full flex-shrink-0">
+                  <Image
+                    src={chat.image}
+                    alt={chat.name}
+                    objectFit="cover"
+                    className="rounded-full"
+                    layout="fill"
+                  />
+                </div>
+                <div
+                  className={`rounded-lg p-2.5 relative max-w-md ${
+                    chat.role === "user"
+                      ? "bg-[#2B8CFF] text-white"
+                      : "bg-[#F4F8FC] text-gray-800"
+                  }`}
+                >
+                  {chat.role !== "user" && (
+                    <p className="text-xs font-bold mb-1 text-gray-600">
+                      {chat.name}
+                    </p>
+                  )}
+                  <p className="text-sm font-normal whitespace-pre-wrap">
+                    {chat.message}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
-      <div className="border-t border-[#E1E1E1] flex gap-4 pt-2 justify-start items-center">
-        <div className="w-full">
+      <div className="border-t border-[#E1E1E1] flex gap-2 md:gap-4 pt-4 items-center">
+        <button
+          className="flex bg-[#F4F8FC] text-gray-600 justify-center items-center p-3 rounded-full border border-[#E1E1E1] cursor-pointer hover:bg-gray-200 transition-colors"
+          title="Upload File"
+        >
+          <FaPaperclip />
+        </button>
+        <button
+          className="flex bg-[#F4F8FC] text-[#2B8CFF] justify-center items-center p-3 rounded-full border border-[#E1E1E1] cursor-pointer hover:bg-gray-200 transition-colors"
+          title="Record Voice (UI only)"
+        >
+          <FaMicrophone />
+        </button>
+        {/* --- [MODIFIED] Added a relative container for the suggestion menu --- */}
+        <div className="flex-grow relative">
+          {/* --- [NEW] The suggestion menu UI --- */}
+          {suggestions.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto">
+              <ul>
+                {suggestions.map(([id, agent]) => (
+                  <li key={id}>
+                    <button
+                      onClick={() => handleSuggestionClick(id)}
+                      className="w-full text-left flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors"
+                    >
+                      <Image
+                        src={agent.avatar}
+                        alt={agent.name}
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-gray-800">
+                          {agent.name}
+                        </span>
+                        <span className="text-xs text-gray-500">@{id}</span>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <textarea
-            className="bg-[#F4F8FC] p-2 rounded-md border-none w-full text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-            onChange={(e) => setMessageData(e.target.value)}
-            // --- MODIFIED: Control the textarea value and handle Enter key ---
+            ref={textareaRef} // --- [NEW] Attach the ref
+            className="bg-[#F4F8FC] p-3 rounded-xl border-none w-full text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none transition-shadow"
+            onChange={handleInputChange} // --- [MODIFIED] Use the new handler
             value={messageData}
-            placeholder="Type your message..."
+            placeholder="Type @ to mention an agent..."
+            rows="1"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault(); // Prevents new line on Enter
-                handleSendMessage();
+                e.preventDefault();
+                onSendMessage();
               }
             }}
           />
         </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex bg-[#F4F8FC] text-[#2B8CFF] justify-center items-center p-2 rounded-full border-[#E1E1E1] cursor-pointer">
-            <FaMicrophone />
-          </div>
-
-          <div
-            className="flex bg-[#2B8CFF] text-[#F4F8FC] justify-center items-center p-2 rounded-full cursor-pointer"
-            // --- MODIFIED: Use the new handler function ---
-            onClick={handleSendMessage}
-          >
-            <BiLogoTelegram />
-          </div>
-        </div>
+        <button
+          className={`flex justify-center items-center p-3 rounded-full cursor-pointer transition-colors ${
+            messageData.trim()
+              ? "bg-[#2B8CFF] text-white hover:bg-blue-600"
+              : "bg-gray-200 text-gray-500 cursor-not-allowed"
+          }`}
+          onClick={onSendMessage}
+          disabled={!messageData.trim()}
+          title="Send Message"
+        >
+          <BiLogoTelegram size={24} />
+        </button>
       </div>
     </div>
   );

@@ -26,11 +26,11 @@ body {
     text-wrap: balance;
   }
 }
-.shape{
-  background-image: url('../assets/workspace/shapes.png');
-  background-size:contain; /* or "contain" depending on your preference */
+.shape {
+  background-image: url("../assets/workspace/shapes.png");
+  background-size: contain; /* or "contain" depending on your preference */
   background-repeat: no-repeat;
-  background-position:  center;
+  background-position: center;
   height: 5.5rem;
 }
 .banr-sec {
@@ -124,7 +124,7 @@ select {
 /* .visual_assests.active .eye_icons {
   color: black !important;
 } */
-.eye_icons{
+.eye_icons {
   width: 26px;
   height: 26px;
 }
@@ -133,7 +133,6 @@ select {
   /* width: 100px; */
   background-color: aliceblue;
   width: fit-content;
-  
 }
 .react-flow__node .inputWrapper {
   display: flex;
@@ -144,9 +143,8 @@ select {
   height: 50px;
 }
 
-
 .scrollable-div {
- /* Width ko set karein jaise aap chahen */
+  /* Width ko set karein jaise aap chahen */
   height: 220px; /* Height ko set karein jaise aap chahen */
   overflow-x: auto; /* Y-axis par scroll hone dein */
 }
@@ -160,12 +158,30 @@ select {
   background-color: #2b8cff; /* Scroll bar ka color badalein */
 }
 
-
-.css-13cymwt-control{
-  background-color: #F4F8FC !important;
+.css-13cymwt-control {
+  background-color: #f4f8fc !important;
   border-radius: 10px !important;
 }
 
-select{
-  @apply border-blue-100 rounded-md 
+select {
+  @apply border-blue-100 rounded-md;
+}
+.version-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.version-node {
+  position: relative;
+  padding: 0.75rem;
+  border-left: 3px solid #e5e7eb;
+  margin-left: 1rem;
+}
+.version-node.current {
+  border-left-color: #3b82f6; /* blue-500 */
+  background-color: #eff6ff; /* blue-50 */
+}
+.version-node.draft {
+  border-left-color: #10b981; /* emerald-500 */
+  background-color: #f0fdf4; /* emerald-50 */
 }

@@ -243,7 +243,7 @@ export default function Header() {
             </button>
 
             {/* Logo */}
-            <Link href="/dashboard" className="flex-shrink-0">
+            <Link href="/" className="flex-shrink-0">
               <Image src={bg} alt={"icon"} width="40" height="40" />
             </Link>
 

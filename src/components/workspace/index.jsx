@@ -5,116 +5,167 @@ import InstantEvaluation from "./InstantEvaluation";
 import NotesBoard from "./notesBoard";
 import SchoolWork from "./schoolWork";
 import EvaluationMatrix from "./evaluationMatrix";
-import {
-  WorkspaceContext,
-  useWorkspaceContext,
-} from "../../context/workspaceProvider";
-import ReactGridLayout from "react-grid-layout";
-// import "./styles.css";
-
-// import { Resizable, ResizableBox } from "react-resizable";
-// import "react-resizable/css/styles.css"; // Import the styles for react-resizable
-
-import Resizable, { useResizable } from "react-resizable-layout";
+import { useWorkspaceContext } from "../../context/workspaceProvider";
+import { useResizable } from "react-resizable-layout";
 import SampleSplitter from "./sampleSplitter";
+import AiSummary from "./AiSummary";
+
+// --- Agent Avatars ---
+import learning2 from "../../assets/icon/profile.png"; // 主助理頭像
+import learning3 from "../../assets/icon/profile2.png"; // 使用者頭像
+import analysisAvatar from "../../assets/icon/profile3.png";
+import professorAvatar from "../../assets/icon/professor.png";
+import teacherAvatar from "../../assets/icon/teacher.png";
+import deadpoolAvatar from "../../assets/icon/deadpool.png"; // 假設這是新 Agent 的頭像
+
+function getOrCreateUserId() {
+  let userId = localStorage.getItem("rag_user_id");
+  if (!userId) {
+    userId = `react-web-${crypto.randomUUID()}`;
+    localStorage.setItem("rag_user_id", userId);
+  }
+  return userId;
+}
 
 function Workspace() {
-  const {
-    whiteBoard,
-    setWhiteBoard,
-    notesBoard,
-    setNotesBoard,
-    instantEvaluation,
-    setInstantEvaluation,
-    evaluationMatrix,
-    setEvaluationMatrix,
-    chats,
-    setChats,
-    sidebar,
-  } = useWorkspaceContext();
-
+  const { notesBoard, instantEvaluation, evaluationMatrix, chats } =
+    useWorkspaceContext();
   const mainContainerRef = useRef(null);
-  const [containerSize, setContainerSize] = useState({
-    width: 0,
-    height: 0,
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [chatRoom, setChatRoom] = useState([]);
+  const socketRef = useRef(null);
+  const [showAiSummary, setShowAiSummary] = useState(true);
+
+  // --- State for Agent Management ---
+  const [agents, setAgents] = useState({
+    user: {
+      name: "You",
+      avatar: learning3,
+    },
+    main_assistant: {
+      name: "School Work AI",
+      avatar: learning2,
+    },
+    analysis_agent: {
+      name: "analysis_agent",
+      avatar: analysisAvatar,
+    },
+    professor: {
+      name: "professor",
+      avatar: professorAvatar,
+    },
+    teacher: {
+      name: "teacher",
+      avatar: teacherAvatar,
+    },
+    deadpool: {
+      name: "deadpool",
+      avatar: deadpoolAvatar,
+    },
   });
 
-  // const handleResize = () => {
-  //   const container = containerRef.current;
-  //   if (container) {
-  //     const { width, height } = container.getBoundingClientRect();
-  //     setContainerSize({ width, height });
-  //   }
-  // };
+  const [activeAgents, setActiveAgents] = useState(["main_assistant"]);
 
+  // --- WebSocket Connection ---
   useEffect(() => {
-    let observer;
-    const handleResize = () => {
-      const container = mainContainerRef.current;
-      if (container) {
-        const { width, height } = container.getBoundingClientRect();
-        setContainerSize({ width, height });
+    const userId = getOrCreateUserId();
+    const backendUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/chat/ws/${userId}`;
+    const socket = new WebSocket(backendUrl);
+    socketRef.current = socket;
+
+    socket.onopen = () => console.log("WebSocket connection established");
+
+    socket.onmessage = (event) => {
+      let parsedData;
+      try {
+        parsedData = JSON.parse(event.data);
+        console.log("從後端收到的原始資料:", parsedData);
+      } catch (e) {
+        console.error("Failed to parse message data:", event.data);
+        parsedData = {
+          content: "An error occurred.",
+          sender: "assistant",
+          agent_id: "main_assistant",
+        };
       }
+
+      const agentId = parsedData.agent_id || "main_assistant";
+      const agentInfo = agents[agentId] || agents["main_assistant"];
+      console.log("解析出的 Agent ID:", agentId);
+
+      const newMessage = {
+        role: parsedData.sender === "user" ? "user" : "assistant",
+        message: parsedData.content,
+        image: agentInfo.avatar,
+        name: agentInfo.name,
+      };
+      setChatRoom((prev) => [...prev, newMessage]);
     };
 
-    if (typeof window !== "undefined") {
-      observer = new ResizeObserver(handleResize);
-      const container = mainContainerRef.current;
-      if (container) {
-        observer.observe(container);
-        // Call it once to initialize state
-        handleResize();
-      }
+    socket.onclose = () => console.log("WebSocket connection closed");
+    socket.onerror = (error) => console.error("WebSocket error:", error);
+
+    return () => socket.close();
+  }, [agents]);
+
+  // --- Message and Agent Handling Functions ---
+  const handleSendMessage = (messageData) => {
+    if (
+      !messageData.trim() ||
+      !socketRef.current ||
+      socketRef.current.readyState !== WebSocket.OPEN
+    ) {
+      return;
+    }
+    const userInfo = agents["user"];
+    const newUserMessage = {
+      role: "user",
+      message: messageData,
+      image: userInfo.avatar,
+      name: userInfo.name,
+    };
+    setChatRoom((prev) => [...prev, newUserMessage]);
+
+    // Send a structured message to the backend
+    socketRef.current.send(
+      JSON.stringify({
+        type: "chat",
+        content: messageData,
+      })
+    );
+  };
+
+  const handleAddAgent = (agentIdToAdd) => {
+    if (
+      activeAgents.includes(agentIdToAdd) ||
+      !socketRef.current ||
+      socketRef.current.readyState !== WebSocket.OPEN
+    ) {
+      return;
     }
 
-    return () => {
-      if (observer) {
-        observer.disconnect();
-      }
-    };
-  }, []);
+    // Notify backend
+    socketRef.current.send(
+      JSON.stringify({
+        type: "add_agent",
+        agent_id: agentIdToAdd,
+      })
+    );
 
-  // useEffect(() => {
-  //   const observer = new ResizeObserver(handleResize);
-  //   const container = containerRef.current;
-  //   if (container) {
-  //     observer.observe(container);
-  //     // Call it once to initialize state
-  //     handleResize();
-  //   }
+    // Update frontend state immediately for better UX
+    setActiveAgents((prev) => [...prev, agentIdToAdd]);
 
-  //   return () => {
-  //     if (container) {
-  //       observer.unobserve(container);
-  //     }
-  //   };
-  // }, []);
+    const agentName = agents[agentIdToAdd]?.name || "New Agent";
+    setChatRoom((prev) => [
+      ...prev,
+      {
+        role: "system",
+        message: `${agentName} has joined the conversation.`,
+      },
+    ]);
+  };
 
-  // console.log("size==>", containerSize);
-
-  // const {
-  //   isDragging: isHorizontalDragging,
-  //   position: horizontalH,
-  //   separatorProps: horizontalDragBarProps,
-  // } = useResizable({
-  //   axis: "y",
-  //   initial: 333,
-  //   min: 250,
-  //   reverse: true,
-  // });
-
-  // const {
-  //   isDragging: isVerticalDragging,
-  //   position: verticalW,
-  //   separatorProps: verticalDragBarProps,
-  // } = useResizable({
-  //   axis: "x",
-  //   initial: 200,
-  //   min: 0,
-  //   max: 400,
-  //   reverse: true,
-  // });
-
+  // ... (Resizable layout hooks remain the same) ...
   const {
     isDragging: isHorizontalDragging,
     position: horizontalH,
@@ -126,108 +177,53 @@ function Workspace() {
     max: 450,
     reverse: true,
   });
-
   const {
-    isDragging: isVerticalDragging,
-    position: verticalW,
-    separatorProps: verticalDragBarProps,
-  } = useResizable({
-    axis: "x",
-    initial: 300,
-    min: 50,
-    max: 400,
-    reverse: true,
-  });
+    isDragging: isRightPanelDragging,
+    position: rightPanelW,
+    separatorProps: rightPanelDragBarProps,
+  } = useResizable({ axis: "x", initial: 400, min: 300, reverse: true });
+  const {
+    isDragging: isMiddlePanelDragging,
+    position: middlePanelW,
+    separatorProps: middlePanelDragBarProps,
+  } = useResizable({ axis: "x", initial: 400, min: 300, reverse: true });
 
-  console.log("container size==>", containerSize);
   return (
-    <>
-      <div className="relative flex flex-col gap-2 font-mono color-white  w-full h-full whitespace-nowrap">
-        <div className="flex grow gap-2 h-full w-full" ref={mainContainerRef}>
-          <div className="flex flex-col grow gap-2 w-full h-full">
-            <div className="flex grow h-full max-w-full">
-              {" "}
-              <div className="h-full w-full">
-                <MainArea />
-              </div>
-            </div>
-            {!evaluationMatrix && !instantEvaluation ? (
-              <></>
-            ) : (
-              <>
-                <SampleSplitter
-                  dir={"horizontal"}
-                  isDragging={isHorizontalDragging}
-                  {...horizontalDragBarProps}
-                />
-                <div
-                  className={`flex w-full ${
-                    isHorizontalDragging && "dragging"
-                  }`}
-                  style={{
-                    height: horizontalH,
-                    width: containerSize.width - verticalW - 20,
-                  }}
-                >
-                  <div className="h-full w-full flex gap-4">
-                    {instantEvaluation && (
-                      <div
-                        className={`${
-                          evaluationMatrix ? "w-1/2" : "w-full"
-                        } h-full`}
-                      >
-                        <InstantEvaluation />
-                      </div>
-                    )}
-                    {evaluationMatrix && (
-                      <div
-                        className={`${
-                          instantEvaluation ? "w-1/2" : "w-full"
-                        } h-full`}
-                      >
-                        <EvaluationMatrix />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+    <div className="relative flex flex-col gap-2 w-full h-full whitespace-nowrap">
+      <div className="flex grow h-full w-full" ref={mainContainerRef}>
+        {/* --- COLUMN 1: Main Content Area --- */}
+        <div className="flex flex-col grow h-full min-w-0">
+          <div className="h-full max-w-full">
+            <MainArea chatRoom={chatRoom} />
           </div>
-
-          {!notesBoard && !chats ? (
-            <></>
-          ) : (
+          {!evaluationMatrix && !instantEvaluation ? null : (
             <>
               <SampleSplitter
-                isDragging={isVerticalDragging}
-                {...verticalDragBarProps}
+                dir="horizontal"
+                isDragging={isHorizontalDragging}
+                {...horizontalDragBarProps}
               />
               <div
-                className={`shrink-0  ${isVerticalDragging && "dragging"}`}
-                style={{ width: verticalW }}
+                className={`flex w-full ${isHorizontalDragging && "dragging"}`}
+                style={{ height: horizontalH, width: "100%" }}
               >
-                <div
-                  className={` h-full w-full flex flex-col gap-4 `}
-                  // style={{
-                  //   width: notesBoard || chats ? "100%" : 0,
-                  // }}
-                >
-                  {notesBoard && (
+                <div className="h-full w-full flex gap-4">
+                  {instantEvaluation && (
                     <div
                       className={`${
-                        chats ? "h-1/2" : "h-full"
-                      } w-full overflow-hidden`}
+                        evaluationMatrix ? "w-1/2" : "w-full"
+                      } h-full`}
                     >
-                      <NotesBoard />
+                      <InstantEvaluation />
                     </div>
                   )}
-                  {chats && (
+                  {evaluationMatrix && (
                     <div
                       className={`${
-                        notesBoard ? "h-1/2" : "h-full"
-                      } w-full overflow-hidden`}
+                        instantEvaluation ? "w-1/2" : "w-full"
+                      } h-full`}
                     >
-                      <SchoolWork />
+                      <EvaluationMatrix />
                     </div>
                   )}
                 </div>
@@ -235,220 +231,72 @@ function Workspace() {
             </>
           )}
         </div>
-        {/* </div> */}
-      </div>
 
-      {/* <div
-        className={
-          "flex flex-column  bg-dark font-mono color-white overflow-hidden w-full h-full bg-[#ff0000]"
-        }
-      >
-        <div className={"flex grow h-full"}>
-          <div className={"flex grow"}>
-            <div className={" grow bg-[#ff0000] h-full"}>
-              <div
-                className="shrink-0 contents h-full"
-                style={{ height: horizontalH }}
-              >
-                Left Up
-              </div>
-              <SampleSplitter
-                dir={"horizontal"}
-                isDragging={isHorizontalDragging}
-                {...horizontalDragBarProps}
-              />
-              <div className="shrink-0 contents">Left Down</div>
-            </div>
+        {/* --- SPLITTER 1 & COLUMN 2: AI Summary --- */}
+        {showAiSummary && (
+          <>
             <SampleSplitter
-              isDragging={isVerticalDragging}
-              {...verticalDragBarProps}
+              isDragging={isMiddlePanelDragging}
+              {...middlePanelDragBarProps}
             />
             <div
-              className={`shrink-0 contents ${
-                isVerticalDragging && "dragging"
+              className={`shrink-0 h-full flex ${
+                isMiddlePanelDragging && "dragging"
               }`}
-              style={{ width: verticalW }}
+              style={{ width: middlePanelW }}
             >
-              Right
+              <AiSummary
+                chatRoom={chatRoom}
+                onClose={() => setShowAiSummary(false)}
+              />
             </div>
-          </div>
-        </div>
-      </div> */}
-
-      {/* <Resizable axis={"x"}>
-        {({ position, separatorProps }) => (
-          <div className="wrapper">
-            <div className="left-block" style={{ width: position }}>
-              1
-            </div>
-            <YourSeparatorComponent {...separatorProps} />
-            <div className="bg-[#ff0000] h-full ">a</div>
-            <div className="right-block">2</div>
-          </div>
+          </>
         )}
-      </Resizable> */}
-      {/* <Resizable lockAspectRatio={true}>
-        <div className="max-w-full h-full bg-[#ff0000] flex gap-4 overflow-hidden">
-          <div className="w-full h-full flex flex-col gap-4 bg-[#2f2727]">
-            <div className="w-full h-full bg-[#957dee]">
-              <Resizable
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  background: "#e2e2e2",
-                  overflow: "hidden",
-                }}
-                minConstraints={[100, 100]}
-                maxConstraints={[300, 300]}
-                axis="both"
-                onResizeStop={(e, data) => {}}
-                onResizeStart={(e, data) => {}}
-                onResize={(e, data) => {}}
-              >
-                <ResizableBox width={200} height={200}>
-                  <span className="bg-[#ff0000]">Contents 1</span>
-                </ResizableBox>
-              </Resizable>
-            </div>
-            <div className="w-full bg-[#7dee8e] flex gap-4">
-              <div className="bg-[#ff0000]">
-                <Resizable
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    background: "#e2e2e2",
-                    overflow: "hidden",
-                  }}
-                  minConstraints={[100, 100]}
-                  maxConstraints={[300, 300]}
-                  axis="both"
-                  onResizeStop={(e, data) => {}}
-                  onResizeStart={(e, data) => {}}
-                  onResize={(e, data) => {}}
-                >
-                  <ResizableBox width={200} height={200}>
-                    <span className="bg-[#ff0000]">Contents 1</span>
-                  </ResizableBox>
-                </Resizable>
-              </div>
-              <div className="bg-[#ff0000]">
-                <Resizable
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    background: "#e2e2e2",
-                    overflow: "hidden",
-                  }}
-                  minConstraints={["50%", "50%"]}
-                  maxConstraints={["100%", "100%"]}
-                  axis="both"
-                  onResizeStop={(e, data) => {}}
-                  onResizeStart={(e, data) => {}}
-                  onResize={(e, data) => {}}
-                >
-                  <ResizableBox width={200} height={200}>
-                    <span className="bg-[#ff0000]">Contents 1</span>
-                  </ResizableBox>
-                </Resizable>
-              </div>
-            </div>
-          </div>
-          <div className="max-w-[300px] h-full flex flex-col gap-4 bg-[#7b7575]">
-            <Resizable
-              style={{
-                width: "100%",
-                height: "100%",
-                background: "#e2e2e2",
-                overflow: "hidden",
-              }}
-              draggableOpts={{ grid: [25, 25] }}
-              minConstraints={[100, 100]}
-              maxConstraints={[300, 300]}
-              axis="both"
-              onResizeStop={(e, data) => {}}
-              onResizeStart={(e, data) => {}}
-              onResize={(e, data) => {}}
+
+        {/* --- SPLITTER 2 & COLUMN 3: Notes & Chat --- */}
+        {!notesBoard && !chats ? null : (
+          <>
+            <SampleSplitter
+              isDragging={isRightPanelDragging}
+              {...rightPanelDragBarProps}
+            />
+            <div
+              className={`shrink-0 h-full ${
+                isRightPanelDragging && "dragging"
+              }`}
+              style={{ width: rightPanelW }}
             >
-              <ResizableBox width={200} height={200}>
-                <span className="bg-[#ff0000]">Contents 1</span>
-              </ResizableBox>
-            </Resizable>
-          </div>
-        </div>
-      </Resizable> */}
-      {/* <ReactGridLayout
-        className="layout "
-        layout={layout}
-        // cols={2}
-        // maxRows={2}
-        // rowHeight={30}
-        // width={1200}
-        isBounded={true}
-      >
-        <div key="a" className="bg-white">
-          a
-        </div>
-        <div key="b" className="bg-white">
-          b
-        </div>
-        <div key="c" className="bg-white">
-          c
-        </div>
-      </ReactGridLayout> */}
-
-      {/* <div className="h-full w-full flex gap-4" ref={containerRef}>
-        <div
-          className="w-full h-full flex flex-col gap-4"
-          style={{
-            width:
-              notesBoard || chats
-                ? containerSize.width - 350
-                : containerSize.width,
-          }}
-        >
-          <div className="h-full w-full">
-            <MainArea />
-          </div>
-
-          <div className="max-h-[300px] w-full flex gap-4">
-            {instantEvaluation && (
-              <div
-                className={`${evaluationMatrix ? "w-1/2" : "w-full"} h-[300px]`}
-              >
-                <InstantEvaluation />
+              <div className="h-full w-full flex flex-col gap-4">
+                {notesBoard && (
+                  <div
+                    className={`${
+                      chats ? "h-1/2" : "h-full"
+                    } w-full overflow-hidden`}
+                  >
+                    <NotesBoard />
+                  </div>
+                )}
+                {chats && (
+                  <div
+                    className={`${
+                      notesBoard ? "h-1/2" : "h-full"
+                    } w-full overflow-hidden`}
+                  >
+                    <SchoolWork
+                      chatRoom={chatRoom}
+                      handleSendMessage={handleSendMessage}
+                      agents={agents}
+                      activeAgents={activeAgents}
+                      onAddAgent={handleAddAgent}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-            {evaluationMatrix && (
-              <div
-                className={`${
-                  instantEvaluation ? "w-1/2" : "w-full"
-                } h-[300px]`}
-              >
-                <EvaluationMatrix />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div
-          className={` h-full flex flex-col gap-4 `}
-          style={{
-            width: notesBoard || chats ? 350 : 0,
-          }}
-        >
-          {notesBoard && (
-            <div className={`${chats ? "h-1/2" : "h-full"} w-[350px] `}>
-              <NotesBoard />
             </div>
-          )}
-          {chats && (
-            <div className={`${notesBoard ? "h-1/2" : "h-full"} w-[350px]`}>
-              <SchoolWork />
-            </div>
-          )}
-        </div>
-      </div> */}
-    </>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
