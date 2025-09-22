@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react"; // 1. 引入 useRef
 import ChartHeader from "./chartHeader";
 
 // 您的後端 API 端點
-const API_ENDPOINT = `${process.env.API_BASE_URL}/api/ai-summary`;
+const API_ENDPOINT = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/ai-summary`;
 
 const fetchAiSummary = async (chatRoom) => {
   const payload = chatRoom.map((chat) => ({
