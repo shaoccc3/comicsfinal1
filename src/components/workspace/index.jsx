@@ -69,7 +69,7 @@ function Workspace() {
   // --- WebSocket Connection ---
   useEffect(() => {
     const userId = getOrCreateUserId();
-    const backendUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/chat/ws/${userId}`;
+    const backendUrl = `${process.env.WEBSOCKET_URL}/chat/ws/${userId}`;
     const socket = new WebSocket(backendUrl);
     socketRef.current = socket;
 
