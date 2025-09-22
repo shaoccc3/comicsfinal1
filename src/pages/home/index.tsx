@@ -1,16 +1,12 @@
 // src/app/page.tsx
 import {
   Search,
-  BookOpen,
-  Users,
-  Briefcase,
-  Lightbulb,
+  
   Heart,
   Calendar,
-  Settings,
+  
   GraduationCap,
-  Award,
-  ThumbsUp,
+  
   Facebook,
   Twitter,
   Linkedin,
@@ -19,10 +15,9 @@ import {
   Bell,
   Home,
   LayoutGrid,
-  Library,
+  
   MessageSquare,
   BarChart3,
-  Rocket
 } from "lucide-react";
 import Image from "next/image";
 import type { FC, ReactNode } from "react";
