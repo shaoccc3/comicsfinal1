@@ -1,3 +1,5 @@
+// workspace/mainArea/index.jsx
+
 "use client";
 import React, { useMemo } from "react";
 import { useWorkspaceContext } from "../../../context/workspaceProvider";
@@ -21,31 +23,15 @@ import {
 } from "@heroicons/react/24/solid";
 
 // --- MainArea Component (Fully Integrated) ---
-function MainArea({ chatRoom }) {
-  const {
-    evaluationMatrix,
-    setEvaluationMatrix,
-    instantEvaluation,
-    setInstantEvaluation,
-    notesBoard,
-    setNotesBoard,
-    chats,
-    setChats,
-  } = useWorkspaceContext();
-
-  const maximizeView = () => {
-    setEvaluationMatrix(false);
-    setInstantEvaluation(false);
-    setNotesBoard(false);
-    setChats(false);
-  };
-
-  const minimizeView = () => {
-    setEvaluationMatrix(true);
-    setInstantEvaluation(true);
-    setNotesBoard(true);
-    setChats(true);
-  };
+function MainArea({
+  chatRoom,
+  maximizeView,
+  minimizeView,
+  showAiSummary,
+  onReactionClick,
+}) {
+  const { evaluationMatrix, instantEvaluation, notesBoard, chats } =
+    useWorkspaceContext();
 
   const transformedData = useMemo(() => {
     if (!chatRoom) {
@@ -56,12 +42,20 @@ function MainArea({ chatRoom }) {
       author: chat.role === "user" ? "使用者" : "Assistant",
       content: chat.message,
       created_at: new Date().toISOString(),
-      reactions: [],
+      reactions: chat.reactions || [],
       type: "idea",
       priority: "normal",
     }));
     return { contributions, drafts: [] };
   }, [chatRoom]);
+
+  // Check if any panel is currently visible
+  const isAnyPanelVisible =
+    evaluationMatrix ||
+    instantEvaluation ||
+    notesBoard ||
+    chats ||
+    showAiSummary;
 
   return (
     <div className="h-full flex flex-col bg-white rounded-[20px] overflow-hidden p-3">
@@ -91,7 +85,7 @@ function MainArea({ chatRoom }) {
             <IoChevronDown className="xl:text-[14px] lg:text-[11px] text-[10px]" />
           </div>
           <div className="border-l border-lightGray h-[30px]"></div>
-          {evaluationMatrix && instantEvaluation && notesBoard && chats ? (
+          {isAnyPanelVisible ? (
             <button
               className="border border-[#9E9E9E] bg-[#9E9E9E] lg:p-2 p-1 rounded-md"
               onClick={maximizeView}
@@ -111,7 +105,10 @@ function MainArea({ chatRoom }) {
 
       {/* 主要內容區域：條件渲染 */}
       <div className="flex-1 w-full h-full overflow-y-auto">
-        <CollaborationTimeline projectData={transformedData} />
+        <CollaborationTimeline
+          projectData={transformedData}
+          onReactionClick={onReactionClick}
+        />
       </div>
     </div>
   );

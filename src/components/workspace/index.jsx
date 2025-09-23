@@ -1,3 +1,5 @@
+// workspace/index.jsx
+
 "use client";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import MainArea from "./mainArea";
@@ -19,6 +21,11 @@ import teacherAvatar from "../../assets/icon/teacher.png";
 import deadpoolAvatar from "../../assets/icon/deadpool.png"; // 假設這是新 Agent 的頭像
 
 function getOrCreateUserId() {
+  // Check if we're in the browser (client-side)
+  if (typeof window === "undefined") {
+    return null; // Return null during SSR
+  }
+
   let userId = localStorage.getItem("rag_user_id");
   if (!userId) {
     userId = `react-web-${crypto.randomUUID()}`;
@@ -28,13 +35,22 @@ function getOrCreateUserId() {
 }
 
 function Workspace() {
-  const { notesBoard, instantEvaluation, evaluationMatrix, chats } =
-    useWorkspaceContext();
+  const {
+    notesBoard,
+    setNotesBoard,
+    instantEvaluation,
+    setInstantEvaluation,
+    evaluationMatrix,
+    setEvaluationMatrix,
+    chats,
+    setChats,
+  } = useWorkspaceContext();
   const mainContainerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [chatRoom, setChatRoom] = useState([]);
   const socketRef = useRef(null);
   const [showAiSummary, setShowAiSummary] = useState(true);
+  const [userId, setUserId] = useState(null);
 
   // --- State for Agent Management ---
   const [agents, setAgents] = useState({
@@ -66,9 +82,50 @@ function Workspace() {
 
   const [activeAgents, setActiveAgents] = useState(["main_assistant"]);
 
+  // --- View Management Functions ---
+  const maximizeView = () => {
+    setEvaluationMatrix(false);
+    setInstantEvaluation(false);
+    setNotesBoard(false);
+    setChats(false);
+    setShowAiSummary(false);
+  };
+
+  const minimizeView = () => {
+    setEvaluationMatrix(true);
+    setInstantEvaluation(true);
+    setNotesBoard(true);
+    setChats(true);
+    setShowAiSummary(true);
+  };
+
+  // --- Reaction Handling ---
+  const handleReactionClick = (contributionId, reactionType) => {
+    setChatRoom((prevChatRoom) => {
+      return prevChatRoom.map((chat, index) => {
+        if (index === contributionId) {
+          const newReaction = { type: reactionType, author: "user" };
+          return {
+            ...chat,
+            reactions: [...(chat.reactions || []), newReaction],
+          };
+        }
+        return chat;
+      });
+    });
+  };
+
+  // Initialize userId on client-side only
+  useEffect(() => {
+    const id = getOrCreateUserId();
+    setUserId(id);
+  }, []);
+
   // --- WebSocket Connection ---
   useEffect(() => {
-    const userId = getOrCreateUserId();
+    if (!userId) {
+      return;
+    }
     const backendUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/chat/ws/${userId}`;
     const socket = new WebSocket(backendUrl);
     socketRef.current = socket;
@@ -98,6 +155,7 @@ function Workspace() {
         message: parsedData.content,
         image: agentInfo.avatar,
         name: agentInfo.name,
+        reactions: [], // Initialize reactions for new messages
       };
       setChatRoom((prev) => [...prev, newMessage]);
     };
@@ -106,7 +164,7 @@ function Workspace() {
     socket.onerror = (error) => console.error("WebSocket error:", error);
 
     return () => socket.close();
-  }, [agents]);
+  }, [userId, agents]); // Added agents to dependency array
 
   // --- Message and Agent Handling Functions ---
   const handleSendMessage = (messageData) => {
@@ -123,6 +181,7 @@ function Workspace() {
       message: messageData,
       image: userInfo.avatar,
       name: userInfo.name,
+      reactions: [], // Initialize reactions for new messages
     };
     setChatRoom((prev) => [...prev, newUserMessage]);
 
@@ -188,13 +247,30 @@ function Workspace() {
     separatorProps: middlePanelDragBarProps,
   } = useResizable({ axis: "x", initial: 400, min: 300, reverse: true });
 
+  // Don't render WebSocket-dependent content until userId is available
+  if (!userId) {
+    return (
+      <div className="relative flex flex-col gap-2 w-full h-full whitespace-nowrap">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex flex-col gap-2 w-full h-full whitespace-nowrap">
       <div className="flex grow h-full w-full" ref={mainContainerRef}>
         {/* --- COLUMN 1: Main Content Area --- */}
         <div className="flex flex-col grow h-full min-w-0">
           <div className="h-full max-w-full">
-            <MainArea chatRoom={chatRoom} />
+            <MainArea
+              chatRoom={chatRoom}
+              maximizeView={maximizeView}
+              minimizeView={minimizeView}
+              showAiSummary={showAiSummary}
+              onReactionClick={handleReactionClick}
+            />
           </div>
           {!evaluationMatrix && !instantEvaluation ? null : (
             <>
@@ -288,6 +364,7 @@ function Workspace() {
                       agents={agents}
                       activeAgents={activeAgents}
                       onAddAgent={handleAddAgent}
+                      userId={userId}
                     />
                   </div>
                 )}
