@@ -129,7 +129,7 @@ function VideoSeriesPage() {
       };
 
       const storyRes = await axios.post(
-        "http://localhost:8080/generate-story",
+        "https://videoserver-885411590606.us-west1.run.app/generate-story",
         requestBody
       );
       setResponse(storyRes.data);
